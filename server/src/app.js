@@ -13,6 +13,7 @@ import transactionRoutes from "./routes/transactions.js";
 import watchlistRoutes from "./routes/watchlist.js";
 import notificationRoutes from "./routes/notifications.js";
 import learningRoutes from "./routes/learning.js";
+import courseRoutes from "./routes/courses.js";
 
 /** Builds the Express app. (Kept separate from index.js so tests can use it.) */
 export function createApp() {
@@ -36,6 +37,7 @@ export function createApp() {
   app.use("/api/watchlist", watchlistRoutes);
   app.use("/api/notifications", notificationRoutes);
   app.use("/api/learning", learningRoutes);
+  app.use("/api/courses", courseRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

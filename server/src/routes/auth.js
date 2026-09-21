@@ -30,7 +30,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email,
+  email: z.string().trim().toLowerCase().min(1, "Email or username is required."),
   password: z.string().min(1, "Password is required.").max(72),
 });
 

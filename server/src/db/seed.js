@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import bcrypt from "bcryptjs";
 import { getDb, closeDb } from "./connection.js";
 import { migrate } from "./migrate.js";
 import { round2 } from "../utils/money.js";
@@ -107,9 +108,57 @@ export function seedStocks(db = getDb()) {
   return SEED_STOCKS.length;
 }
 
+export function seedAdminAndCourses(db = getDb()) {
+  const adminExists = db.prepare("SELECT 1 FROM users WHERE email = ? OR name = ?").get("admin@stockmaster.com", "admin");
+  if (!adminExists) {
+    const passwordHash = bcrypt.hashSync("123456", 10);
+    db.prepare(`
+      INSERT INTO users (name, email, password_hash, role, balance, starting_balance)
+      VALUES (?, ?, ?, 'admin', 1000000, 1000000)
+    `).run("admin", "admin@stockmaster.com", passwordHash);
+  }
+
+  const coursesCount = db.prepare("SELECT COUNT(*) AS n FROM courses").get().n;
+  if (coursesCount === 0) {
+    const insertCourse = db.prepare(`
+      INSERT INTO courses (title, description, category, level, icon)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const insertLesson = db.prepare(`
+      INSERT INTO course_lessons (course_id, title, content, video_url, order_index)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const run = db.transaction(() => {
+      const c1 = insertCourse.run(
+        "Stock Market Fundamentals",
+        "Master the basics of stock markets, how shares work, and key concepts every investor must know.",
+        "Basics",
+        "Beginner",
+        "📚"
+      );
+      const course1Id = Number(c1.lastInsertRowid);
+      insertLesson.run(course1Id, "Introduction to Stock Market", "A stock represents ownership in a company. When you buy a stock, you become a shareholder.", "https://youtu.be/p5ORIeMULIg", 1);
+      insertLesson.run(course1Id, "Understanding Stock Exchanges", "Exchanges like NSE and BSE provide a secure trading platform for buyers and sellers.", "https://youtu.be/2jC1iAvqExw", 2);
+
+      const c2 = insertCourse.run(
+        "Fundamental Analysis",
+        "Learn how to analyze company balance sheets, earnings, and key valuation metrics before buying.",
+        "Analysis",
+        "Intermediate",
+        "🔎"
+      );
+      const course2Id = Number(c2.lastInsertRowid);
+      insertLesson.run(course2Id, "Analyzing Financial Statements", "Learn how to read P&L statements, balance sheets, and cash flow reports.", "https://youtu.be/k8AXprgX3Fw", 1);
+    });
+    run();
+  }
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   migrate();
   const n = seedStocks();
+  seedAdminAndCourses();
   console.log(n ? `Seeded ${n} stocks.` : "Stocks already exist - nothing to seed.");
   closeDb();
 }

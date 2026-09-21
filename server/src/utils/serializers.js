@@ -30,6 +30,7 @@ export function serializeUser(row) {
     id: row.id,
     name: row.name,
     email: row.email,
+    role: row.role || "user",
     balance: row.balance,
     startingBalance: row.starting_balance,
     createdAt: row.created_at,
