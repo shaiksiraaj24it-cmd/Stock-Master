@@ -68,7 +68,19 @@ export async function register({ name, email, password }) {
 }
 
 export async function login({ email, password }) {
-  const row = getDb().prepare("SELECT * FROM users WHERE email = ?").get(email);
+  let db = getDb();
+  let row = db.prepare("SELECT * FROM users WHERE email = ? OR LOWER(name) = ?").get(email, email);
+
+  // If logging in as admin and admin user hasn't been created yet, seed admin user
+  if (!row && (email === "admin" || email === "admin@stockmaster.com")) {
+    const passwordHash = await bcrypt.hash("123456", BCRYPT_ROUNDS);
+    db.prepare(`
+      INSERT INTO users (name, email, password_hash, role, balance, starting_balance)
+      VALUES (?, ?, ?, 'admin', 1000000, 1000000)
+    `).run("admin", "admin@stockmaster.com", passwordHash);
+    row = db.prepare("SELECT * FROM users WHERE email = ? OR LOWER(name) = ?").get(email, email);
+  }
+
   const ok = await bcrypt.compare(password, row ? row.password_hash : DUMMY_HASH);
   if (!row || !ok) throw unauthorized("Invalid email or password.");
 

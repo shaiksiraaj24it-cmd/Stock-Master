@@ -14,9 +14,17 @@ export function requireAuth(req, _res, next) {
     const payload = verifyToken(token);
     const user = findUserById(Number(payload.sub));
     if (!user) throw unauthorized("This account no longer exists.");
-    req.user = { id: user.id, name: user.name, email: user.email };
+    req.user = { id: user.id, name: user.name, email: user.email, role: user.role || "user" };
     next();
   } catch (err) {
     next(err);
   }
+}
+
+/** Requires `req.user` to have `role === 'admin'`. */
+export function requireAdmin(req, _res, next) {
+  if (req.user?.role !== "admin") {
+    return next(unauthorized("Admin access required."));
+  }
+  next();
 }

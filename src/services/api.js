@@ -74,6 +74,7 @@ async function request(method, path, { body, query } = {}) {
 
 const get = (path, query) => request("GET", path, { query });
 const post = (path, body) => request("POST", path, { body: body ?? {} });
+const put = (path, body) => request("PUT", path, { body: body ?? {} });
 const del = (path) => request("DELETE", path);
 
 /* ------------------------------ API ------------------------------- */
@@ -139,5 +140,13 @@ export const api = {
     recordQuiz: ({ moduleId, score, total }) =>
       post("/learning/quiz-attempts", { moduleId, score, total }),
     quizAttempts: (query) => get("/learning/quiz-attempts", query),
+  },
+
+  courses: {
+    list: () => get("/courses"),
+    get: (id) => get(`/courses/${id}`),
+    create: (data) => post("/courses", data),
+    update: (id, data) => put(`/courses/${id}`, data),
+    delete: (id) => del(`/courses/${id}`),
   },
 };

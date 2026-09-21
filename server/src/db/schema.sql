@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   name              TEXT    NOT NULL,
   email             TEXT    NOT NULL UNIQUE COLLATE NOCASE,
   password_hash     TEXT    NOT NULL,
+  role              TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   balance           REAL    NOT NULL DEFAULT 100000 CHECK (balance >= 0),
   starting_balance  REAL    NOT NULL DEFAULT 100000 CHECK (starting_balance >= 0),
   created_at        TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
@@ -165,3 +166,29 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
   CHECK (score <= total)
 );
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts (user_id, created_at DESC);
+
+-- ---------------------------------------------------------------------
+-- COURSES & LESSONS
+-- Admin created courses and course lessons.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS courses (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  title        TEXT    NOT NULL,
+  description  TEXT    NOT NULL,
+  category     TEXT    NOT NULL DEFAULT 'General',
+  level        TEXT    NOT NULL DEFAULT 'Beginner',
+  icon         TEXT    DEFAULT '📚',
+  created_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS course_lessons (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  course_id    INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  title        TEXT    NOT NULL,
+  content      TEXT    NOT NULL,
+  video_url    TEXT,
+  order_index  INTEGER NOT NULL DEFAULT 1,
+  created_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_course_lessons_course ON course_lessons (course_id, order_index);

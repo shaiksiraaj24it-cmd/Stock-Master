@@ -88,6 +88,7 @@ test("schema creates every expected table", () => {
   for (const expected of [
     "users", "stocks", "market_prices", "market_cache", "portfolio",
     "transactions", "watchlist", "notifications", "lesson_progress", "quiz_attempts",
+    "courses", "course_lessons",
   ]) {
     assert.ok(tables.includes(expected), `missing table ${expected}`);
   }
@@ -524,4 +525,77 @@ test("quiz attempts are validated and summarised", async () => {
 
   const filtered = await api("GET", "/api/learning/quiz-attempts?moduleId=1", { token: u.token });
   assert.equal(filtered.body.attempts.length, 1);
+});
+
+/* ---------------------------- ADMIN & COURSES --------------------- */
+
+test("admin login and course management CRUD", async () => {
+  // Login as admin
+  const adminLogin = await api("POST", "/api/auth/login", {
+    body: { email: "admin", password: "123456" },
+  });
+  assert.equal(adminLogin.status, 200);
+  assert.equal(adminLogin.body.user.role, "admin");
+  const adminToken = adminLogin.body.token;
+
+  // Regular user
+  const u = await newUser("Student");
+
+  // Regular user cannot create course
+  const unauthorizedCreate = await api("POST", "/api/courses", {
+    token: u.token,
+    body: { title: "Test Course", description: "Desc" },
+  });
+  assert.equal(unauthorizedCreate.status, 401);
+
+  // Admin can create course
+  const createRes = await api("POST", "/api/courses", {
+    token: adminToken,
+    body: {
+      title: "Technical Analysis 101",
+      description: "Master candlestick charts.",
+      category: "Analysis",
+      level: "Intermediate",
+      icon: "📊",
+      lessons: [
+        { title: "Candlestick Patterns", content: "Learn hammer and doji patterns.", videoUrl: "https://youtu.be/qcWZ5pYYCXs" },
+      ],
+    },
+  });
+  assert.equal(createRes.status, 201);
+  const newCourseId = createRes.body.course.id;
+  assert.equal(createRes.body.course.title, "Technical Analysis 101");
+  assert.equal(createRes.body.course.lessons.length, 1);
+
+  // Anyone can list courses
+  const listRes = await api("GET", "/api/courses");
+  assert.equal(listRes.status, 200);
+  assert.ok(listRes.body.courses.length >= 1);
+
+  // Get course details
+  const getRes = await api("GET", `/api/courses/${newCourseId}`);
+  assert.equal(getRes.status, 200);
+  assert.equal(getRes.body.course.lessons[0].title, "Candlestick Patterns");
+
+  // Admin can update course
+  const updateRes = await api("PUT", `/api/courses/${newCourseId}`, {
+    token: adminToken,
+    body: {
+      title: "Advanced Technical Analysis",
+      description: "Master advanced chart setups.",
+    },
+  });
+  assert.equal(updateRes.status, 200);
+  assert.equal(updateRes.body.course.title, "Advanced Technical Analysis");
+
+  // Admin can delete course
+  const delRes = await api("DELETE", `/api/courses/${newCourseId}`, {
+    token: adminToken,
+  });
+  assert.equal(delRes.status, 200);
+  assert.equal(delRes.body.success, true);
+
+  // Confirm deleted
+  const getDeleted = await api("GET", `/api/courses/${newCourseId}`);
+  assert.equal(getDeleted.status, 404);
 });
